@@ -1,0 +1,33 @@
+You are generating a ticket summary. READ-ONLY: never create, edit, transition or
+comment on any ticket.
+
+1. JIRA: call mcp__new-jira__jira_search with
+   jql: assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC
+   limit: 50, fields: summary,status,updated,priority,issuetype,project
+2. BACKLOG ({{BACKLOG_DOMAIN}}): if {{BACKLOG_WATCH_USER_IDS}} is "none", skip this whole
+   section and write "*Backlog*: not set up yet — add BACKLOG_WATCH_USER_IDS to config.env"
+   instead of a Backlog section. Otherwise call mcp__backlog__get_issues with
+   assigneeId: [{{BACKLOG_WATCH_USER_IDS}}]  ({{BACKLOG_WATCH_NAMES}})
+   statusId: [1, 2, 3]                    (Open, In Progress, Resolved; Closed excluded)
+   sort: updated, order: desc, count: 100
+   Then drop every issue whose key starts with "<excluded project key>-" for the
+   excluded keys listed below. If that list is "none", keep everything.
+3. Build ONE Slack message using Slack mrkdwn (*bold*, <url|text> links):
+   - Header: "*Ticket summary for <weekday, date, time>*" and add "(manual run)"
+     if the run type given below is manual.
+   - "*🆕 Changed since last summary*": tickets from either source updated after the
+     last-summary time given below (Backlog times are UTC; convert to local time).
+     Write "Nothing changed" if none.
+   - "*Jira: assigned to me*": grouped 🔄 In Progress / 📋 To Do / 👀 other.
+   - "*Backlog: {{BACKLOG_WATCH_NAMES}}*": grouped by person, then status.
+     Put the project key in brackets after each ticket's title so it's easy to see
+     which project it belongs to (useful for deciding what to add to backlog-exclude.txt).
+   - One line per ticket: <link|KEY> short English title, updated <relative time>.
+     Translate any Japanese title into a short English one.
+     Add ⚠️ if In Progress with no update for more than 7 days.
+   - Links: {{JIRA_URL}}/browse/KEY and https://{{BACKLOG_DOMAIN}}/view/KEY
+   - If a source fails, write "⚠️ Could not reach <source>: <reason>". Never skip it silently.
+   - Last line: totals per source, plus which Backlog projects were excluded (if any).
+4. Send it with mcp__slack__slack_post_message to channel_id {{SLACK_USER_ID}}.
+5. Your final output must be exactly "POSTED" if the Slack call succeeded,
+   otherwise "FAILED: <reason>".

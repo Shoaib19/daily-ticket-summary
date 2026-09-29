@@ -1,0 +1,9 @@
+# Backlog project keys to leave out of your summary, one per line.
+# Find the project key in brackets after each ticket title in a summary you've
+# already received, e.g. "[VIETNAM_IT_PJ]" -> the key is VIETNAM_IT_PJ.
+#
+# Empty file = every project is included.
+#
+# Example:
+# VIETNAM_IT_PJ
+# M_IT_PJ

@@ -1,0 +1,6 @@
+# Personal secrets and per-person state — never share these.
+config.env
+backlog-exclude.txt
+state/
+*.log
+.DS_Store
