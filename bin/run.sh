@@ -131,10 +131,15 @@ EXCLUDE_FILE="$DIR/backlog-exclude.txt"
 [[ -f "$EXCLUDE_FILE" ]] || EXCLUDE_FILE="$DIR/backlog-exclude.example.txt"
 EXCLUDE="$(grep -vE '^[[:space:]]*(#|$)' "$EXCLUDE_FILE" 2>/dev/null | tr '\n' ' ')"
 
+# JIRA_PROJECTS=CUS,SA → "project in (CUS,SA) AND "; blank → all projects
+JIRA_SCOPE=""
+[[ -n "${JIRA_PROJECTS// /}" ]] && JIRA_SCOPE="project in (${JIRA_PROJECTS// /}) AND "
+
 # ---- fill in the prompt template (| as sed delimiter since URLs contain /) ----
 PROMPT="$(sed \
   -e "s|{{SLACK_USER_ID}}|$SLACK_USER_ID|g" \
   -e "s|{{JIRA_URL}}|$JIRA_URL|g" \
+  -e "s|{{JIRA_SCOPE}}|$JIRA_SCOPE|g" \
   -e "s|{{BACKLOG_DOMAIN}}|$BACKLOG_DOMAIN|g" \
   -e "s|{{BACKLOG_WATCH_USER_IDS}}|${BACKLOG_WATCH_USER_IDS:-none}|g" \
   -e "s|{{BACKLOG_WATCH_NAMES}}|${BACKLOG_WATCH_NAMES:-nobody}|g" \
@@ -148,7 +153,10 @@ Excluded Backlog project keys: ${EXCLUDE:-none}"
 
 log "running summary ($MODE)"
 cd "$DIR"
+# dontAsk: deny every tool not listed below, regardless of the user's default
+# permission mode — this is what actually keeps the job read-only.
 OUT=$("$CLAUDE" -p "$FULL_PROMPT" \
+  --permission-mode dontAsk \
   --allowedTools "mcp__new-jira__jira_search mcp__backlog__get_issues mcp__slack__slack_post_message" 2>&1)
 log "claude said: $OUT"
 
