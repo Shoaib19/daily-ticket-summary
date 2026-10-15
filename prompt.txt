@@ -1,9 +1,16 @@
 You are generating a ticket summary. READ-ONLY: never create, edit, transition or
 comment on any ticket.
 
-1. JIRA: call mcp__new-jira__jira_search with
-   jql: assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC
-   limit: 50, fields: summary,status,updated,priority,issuetype,project
+1. JIRA — the whole team's open work, whoever created or is assigned each ticket.
+   Make two mcp__new-jira__jira_search calls, each with limit: 50. If a result says
+   there are more pages, keep calling with its page_token until you have them all.
+   a) Assigned tickets:
+      jql: {{JIRA_SCOPE}}statusCategory != Done AND assignee is not EMPTY ORDER BY updated DESC
+      fields: summary,status,updated,priority,issuetype,project,assignee,reporter
+   b) Unassigned tickets (only counted in the message, not listed — except in the
+      "Changed since last summary" section):
+      jql: {{JIRA_SCOPE}}statusCategory != Done AND assignee is EMPTY ORDER BY updated DESC
+      fields: summary,status,updated,project
 2. BACKLOG ({{BACKLOG_DOMAIN}}): if {{BACKLOG_WATCH_USER_IDS}} is "none", skip this whole
    section and write "*Backlog*: not set up yet — add BACKLOG_WATCH_USER_IDS to config.env"
    instead of a Backlog section. Otherwise call mcp__backlog__get_issues with
@@ -18,7 +25,13 @@ comment on any ticket.
    - "*🆕 Changed since last summary*": tickets from either source updated after the
      last-summary time given below (Backlog times are UTC; convert to local time).
      Write "Nothing changed" if none.
-   - "*Jira: assigned to me*": grouped 🔄 In Progress / 📋 To Do / 👀 other.
+   - "*Jira: who is doing what*": grouped by assignee (the person running this
+     summary first, labelled "(me)", then everyone else alphabetically), and within
+     each person 🔄 In Progress / 📋 To Do / 👀 other. Put the project key in brackets
+     after each ticket's title.
+   - "*Jira: unassigned*": one line per project with counts only, e.g.
+     "DUS: 68 (🔄 3 in progress, 📋 65 to do)". Add ⚠️ to a project that has unassigned
+     tickets In Progress (in progress with nobody owning it).
    - "*Backlog: {{BACKLOG_WATCH_NAMES}}*": grouped by person, then status.
      Put the project key in brackets after each ticket's title so it's easy to see
      which project it belongs to (useful for deciding what to add to backlog-exclude.txt).
@@ -27,7 +40,8 @@ comment on any ticket.
      Add ⚠️ if In Progress with no update for more than 7 days.
    - Links: {{JIRA_URL}}/browse/KEY and https://{{BACKLOG_DOMAIN}}/view/KEY
    - If a source fails, write "⚠️ Could not reach <source>: <reason>". Never skip it silently.
-   - Last line: totals per source, plus which Backlog projects were excluded (if any).
+   - Last line: totals per source (Jira: assigned / unassigned), plus which Backlog
+     projects were excluded (if any).
 4. Send it with mcp__slack__slack_post_message to channel_id {{SLACK_USER_ID}}.
 5. Your final output must be exactly "POSTED" if the Slack call succeeded,
    otherwise "FAILED: <reason>".

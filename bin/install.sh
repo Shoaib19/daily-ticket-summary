@@ -115,8 +115,18 @@ SAFE_USER=$(whoami | tr -cd 'a-zA-Z0-9' | tr '[:upper:]' '[:lower:]')
 JOB_LABEL="com.${SAFE_USER}.daily-ticket-summary"
 PLIST="$HOME/Library/LaunchAgents/${JOB_LABEL}.plist"
 
+# launchd starts jobs with a bare PATH that skips ~/.zshrc, so tools installed
+# via nvm or ~/.local/bin (claude, npx, uvx) wouldn't be found and the MCP
+# servers would fail to start. Bake their current locations into the job.
+# (Switched Node versions with nvm? Re-run bin/install.sh.)
+typeset -U PATH_PARTS
+PATH_PARTS=(${(f)"$(for c in claude npx uvx; do dirname "$(command -v $c)"; done)"} \
+  /opt/homebrew/bin /usr/local/bin /usr/bin /bin /usr/sbin /sbin)
+JOB_PATH="${(j/:/)PATH_PARTS}"
+
 sed \
   -e "s|{{JOB_LABEL}}|$JOB_LABEL|g" \
+  -e "s|{{PATH}}|$JOB_PATH|g" \
   -e "s|{{REPO_DIR}}|$DIR|g" \
   -e "s|{{HOME}}|$HOME|g" \
   "$DIR/templates/launchd.plist.template" > "$PLIST"

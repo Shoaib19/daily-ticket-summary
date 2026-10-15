@@ -1,7 +1,7 @@
 # Daily Ticket Summary
 
 A DM to yourself in Slack, listing:
-- your own Jira tickets that aren't done yet, and
+- every open Jira ticket, grouped by who it's assigned to (so you can see who is doing what), and
 - your teammates' Backlog tickets (whoever you choose to watch),
 
 so you know what's moving before you start your day — without opening either
